@@ -2,13 +2,21 @@ package com.uranahjus.sananmuunnos
 
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.TextView
+import androidx.activity.result.launch
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
+import com.google.ai.client.generativeai.BuildConfig
+import com.google.ai.client.generativeai.GenerativeModel
+import com.google.android.material.snackbar.Snackbar
 import com.uranahjus.sananmuunnos.databinding.ActivityWordDetailsBinding
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -17,6 +25,9 @@ class WordDetails : AppCompatActivity() {
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityWordDetailsBinding
     private val TAG = "DatabaseHelper"
+    private var wordConjugations: Array<String> = emptyList<String>().toTypedArray()
+    private var wordWDeclensions: Array<String> = emptyList<String>().toTypedArray()
+    private val apikey = "AIzaSyA8Xqvl-SmsorsYVoeyvdgRh8r3sY1hNuY"
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,6 +46,7 @@ class WordDetails : AppCompatActivity() {
         // get intent extra
         val word = intent.getStringExtra("word")
         Log.d(TAG, "Word from intent: $word")
+
 
         // set title of activity to word
         val title =  findViewById<TextView>(R.id.textViewWord)
@@ -58,17 +70,49 @@ class WordDetails : AppCompatActivity() {
             val conjugation: Map<Int, Array<String>> = loadConjugations()
 
             Log.d(TAG, "Examples: $conjugation.get(examples.toInt())".toString())
-            val wordConjugations = conjugation.get(examples.toInt()) ?: return
-            wordReferenceView.append(wordConjugations.get(0))
+            wordConjugations = conjugation.get(examples.toInt()) ?: return
+            wordReferenceView.append(wordConjugations.first())
 
             Log.d(TAG, "Word conjugations: $wordConjugations")
-            val wordWDeclensions = appendDeclension(wordConjugations, examples.toInt())
+            wordWDeclensions = appendDeclension(wordConjugations, examples.toInt())
             Log.d(TAG, "Word with declensions: $wordWDeclensions")
 
             if (wordWDeclensions.isNotEmpty()) {
                 var exampleDetails: StringBuilder = StringBuilder()
                 exampleDetails.append(wordWDeclensions.joinToString("\n"))
                 examplesView.setText(exampleDetails)
+            }
+        }
+
+        // ai fab
+        val fab: View = findViewById(R.id.floatingActionButton)
+        fab.setOnClickListener { view ->
+            CoroutineScope(Dispatchers.Main).launch {
+                Snackbar.make(
+                    view,
+                    "Loihditaan tekoälyllä esimerkki sanasta $word",
+                    Snackbar.LENGTH_LONG
+                )
+                    .setAction("Action", null).show()
+
+                val generativeModel = GenerativeModel(
+                    modelName = "gemini-1.5-flash",
+                    apiKey = apikey
+                )
+
+                var prompt: StringBuilder = StringBuilder()
+                prompt.append("Tarvitsen taivutusmuotoja tälle sanalle: ")
+                prompt.append(word)
+                prompt.append("\n")
+                prompt.append("Se taipuu samalla tavalla kuin sana ")
+                prompt.append(wordConjugations.first())
+                prompt.append("\n")
+                prompt.append("")
+
+                val response = generativeModel.generateContent(prompt.toString())
+                print(response.text)
+                val examplesView = findViewById<TextView>(R.id.textViewWordExamples)
+                examplesView.append("\n\nAI sangenerated examples:\n${response.text}")
             }
         }
     }
