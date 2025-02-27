@@ -2,80 +2,92 @@ package com.uranahjus.sananmuunnos
 
 import android.os.Bundle
 import android.util.Log
-import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.Toolbar
-import androidx.navigation.findNavController
-import androidx.navigation.ui.AppBarConfiguration
-import androidx.navigation.ui.navigateUp
 import com.uranahjus.sananmuunnos.databinding.ActivityWordDetailsBinding
 import org.json.JSONArray
 import org.json.JSONObject
 
 class WordDetails : AppCompatActivity() {
-
-    private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityWordDetailsBinding
+    private lateinit var dbHelper: SanastoDbHelper
     private val TAG = "DatabaseHelper"
 
+    companion object {
+        const val EXTRA_WORD = "word"
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         binding = ActivityWordDetailsBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        val toolbar: Toolbar = findViewById(R.id.toolbar)
-        setSupportActionBar(toolbar)
-        // display back button
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        val dbHelper = SanastoDbHelper(applicationContext)
-        val db = dbHelper.openDatabase()
+        dbHelper = SanastoDbHelper(applicationContext)
 
-        // get intent extra
-        val word = intent.getStringExtra("word")
-        Log.d(TAG, "Word from intent: $word")
-
-        // set title of activity to word
-        val title =  findViewById<TextView>(R.id.textViewWord)
-        title.setText(word)
-        toolbar.setTitle(word)
-
-        val sanastoa = dbHelper.getValueFromDatabase(word!!, db)
-        println("Sanastoa: $sanastoa")
-
-        // display word details
-        val classification = sanastoa.classification
-        if ( classification.isNotEmpty()) {
-            val details = findViewById<TextView>(R.id.textViewWordClassification)
-            details.setText("$word on ${classification}")
-        }
-
-        val examples = sanastoa.example
-        if ( examples > 0) {
-            val examplesView = findViewById<TextView>(R.id.textViewWordExamples)
-            val wordReferenceView = findViewById<TextView>(R.id.textViewReferenceWord)
-            val conjugation: Map<Int, Array<String>> = loadConjugations()
-
-            Log.d(TAG, "Examples: $conjugation.get(examples.toInt())".toString())
-            val wordConjugations = conjugation.get(examples.toInt()) ?: return
-            wordReferenceView.append(wordConjugations.get(0))
-
-            Log.d(TAG, "Word conjugations: $wordConjugations")
-            val wordWDeclensions = appendDeclension(wordConjugations, examples.toInt())
-            Log.d(TAG, "Word with declensions: $wordWDeclensions")
-
-            if (wordWDeclensions.isNotEmpty()) {
-                var exampleDetails: StringBuilder = StringBuilder()
-                exampleDetails.append(wordWDeclensions.joinToString("\n"))
-                examplesView.setText(exampleDetails)
-            }
-        }
+        setupToolbar()
+        loadWordDetails()
     }
 
     override fun onSupportNavigateUp(): Boolean {
         finish()
         return true
+    }
+
+    private fun setupToolbar() {
+        setSupportActionBar(binding.toolbar)
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+    }
+
+    private fun loadWordDetails() {
+        // Safely get the word from the intent
+        val word = intent.getStringExtra(EXTRA_WORD) ?: run {
+            Log.e(TAG, "No word provided in intent.")
+            finish() // Close the activity if no word is provided
+            return
+        }
+
+        Log.d(TAG, "Word from intent: $word")
+
+        // Set the title of the activity and the TextView
+        binding.textViewWord.text = word
+        binding.toolbar.title = word
+
+        // Open the database
+        val db = dbHelper.openDatabase()
+
+        // Retrieve word details from the database
+        val wordDetails = dbHelper.getValueFromDatabase(word, db)
+        println("Word details: $wordDetails")
+
+        displayClassification(word, wordDetails.classification)
+        displayExamples(wordDetails.example)
+    }
+
+    private fun displayClassification(word: String, classification: String) {
+        if (classification.isNotEmpty()) {
+            binding.textViewWordClassification.text = getString(R.string.word_classification_format, word, classification)
+        }
+    }
+
+    private fun displayExamples(examplesCount: Int) {
+        if (examplesCount > 0) {
+            val conjugation: Map<Int, Array<String>> = loadConjugations()
+
+            Log.d(TAG, "Examples: ${conjugation[examplesCount]}")
+            val wordConjugations = conjugation[examplesCount] ?: run {
+                Log.w(TAG, "No conjugations found for example count: $examplesCount")
+                return
+            }
+
+            Log.d(TAG, "Word conjugations: ${wordConjugations.contentToString()}")
+            val wordWithDeclensions = appendDeclension(wordConjugations, examplesCount)
+            Log.d(TAG, "Word with declensions: $wordWithDeclensions")
+
+            if (wordWithDeclensions.isNotEmpty()) {
+                binding.textViewWordExamples.text = wordWithDeclensions.joinToString("\n")
+            }
+            binding.textViewReferenceWord.text = wordConjugations[0]
+        }
     }
 
     fun loadConjugations(): Map<Int, Array<String>> {
