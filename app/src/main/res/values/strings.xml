@@ -1,9 +1,6 @@
 <resources>
     <string name="app_name">Sananmuunnos</string>
     <!-- Strings used for fragments for navigation -->
-    <string name="first_fragment_label">First Fragment</string>
-    <string name="second_fragment_label">Second Fragment</string>
-    <string name="next">Next</string>
-    <string name="previous">Previous</string>
     <string name="word_classification_format">%1$s on %2$s</string>
+    <string name="taipuu_samalla_tavalla_kuin_sana">taipuu samalla tavalla kuin sana %1$s</string>
 </resources>

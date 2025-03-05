@@ -17,7 +17,7 @@ import org.json.JSONObject
 class WordDetails : AppCompatActivity() {
     private lateinit var binding: ActivityWordDetailsBinding
     private lateinit var dbHelper: SanastoDbHelper
-    private val TAG = "DatabaseHelper"
+    private val TAG = "databaseHelper"
     private var word: String = ""
     private var wordConjugations: Array<String> = emptyList<String>().toTypedArray()
     private var wordWDeclensions: Array<String> = emptyList<String>().toTypedArray()
@@ -66,7 +66,7 @@ class WordDetails : AppCompatActivity() {
             apiKey = apikey
         )
 
-        var prompt: StringBuilder = StringBuilder()
+        val prompt: StringBuilder = StringBuilder()
         prompt.append("Tarvitsen taivutusmuotoja tälle sanalle: ")
         prompt.append(inputWord)
         prompt.append("\n")
@@ -134,7 +134,9 @@ class WordDetails : AppCompatActivity() {
             if (wordWDeclensions.isNotEmpty()) {
                 binding.textViewWordExamples.text = wordWDeclensions.joinToString("\n")
             }
-            binding.textViewReferenceWord.text = "taipuu samalla tavalla kuin sana ${wordConjugations.first()}"
+            binding.textViewReferenceWord.text = getString(
+                R.string.taipuu_samalla_tavalla_kuin_sana,
+                wordConjugations.first().replaceFirstChar { it.uppercase() })
         }
     }
 
@@ -153,7 +155,7 @@ class WordDetails : AppCompatActivity() {
     private fun appendDeclension(word: Array<String>?, declension: Int): Array<String> {
         Log.d(TAG, "Etsitaan nominien jotkut ihme nimet: $word")
         val singleDeclension = getSingleDeclension(declension)
-        var combined: Array<String> = Array(singleDeclension.size) { "" }
+        val combined: Array<String> = Array(singleDeclension.size) { "" }
 
         for (i in singleDeclension.indices) {
             Log.d(TAG, "yhdistetaan $word[i] ja ${singleDeclension[i]}")
